@@ -16,7 +16,13 @@ app.set("port", process.env.PORT || 8000); // 포트 설정
 app.set("host", process.env.HOST || "0.0.0.0"); // 아이피 설정
 
 app.get("/movies", (req: Request, res: Response, next: NextFunction) => {
-  const query = "select movie_id, title, year from movies";
+  const query = `    
+    SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+    FROM movies m
+    LEFT JOIN movie_director md ON m.movie_id = md.movie_id
+    LEFT JOIN genres g ON m.movie_id = g.movie_id
+    LEFT JOIN directors d ON md.director_id = d.director_id
+    ORDER BY m.movie_id`;
   conn.query(query, function (err: any, result: any) {
     if (err) {
       console.log("query is not excuted: " + err);
@@ -28,33 +34,66 @@ app.get("/movies", (req: Request, res: Response, next: NextFunction) => {
 });
 
 app.get("/search-movies", (req: Request, res: Response, next: NextFunction) => {
-  const { movieTitle, directorName } = req.query;
+  const { movieTitle, directorName, fromYear, toYear } = req.query;
 
-  // Use LIKE with parameterized queries to prevent SQL injection
-  const query = `
-      SELECT m.movie_id, m.title, d.director_name 
-      FROM movie_director md 
-      JOIN directors d ON md.director_id = d.director_id 
-      JOIN movies m ON md.movie_id = m.movie_id
-      WHERE m.title LIKE ? OR d.director_name LIKE ?
+  let isNull = false;
+  let query = `
+      SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+      FROM movies m
+      LEFT JOIN movie_director md ON m.movie_id = md.movie_id
+      LEFT JOIN genres g ON m.movie_id = g.movie_id
+      LEFT JOIN directors d ON md.director_id = d.director_id
+      WHERE 1=1
     `;
+  if (
+    !movieTitle &&
+    !directorName &&
+    fromYear === "전체 선택" &&
+    toYear === "전체 선택"
+  ) {
+    query = `    
+      SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+      FROM movies m
+      LEFT JOIN movie_director md ON m.movie_id = md.movie_id
+      LEFT JOIN genres g ON m.movie_id = g.movie_id
+      LEFT JOIN directors d ON md.director_id = d.director_id
+      ORDER BY m.movie_id`;
+    isNull = true;
+  }
 
-  const movieTitleParam = movieTitle ? `%${movieTitle}%` : "%";
-  const directorNameParam = directorName ? `%${directorName}%` : "%";
+  let queryParams: any[] = [];
 
-  conn.query(
-    query,
-    [movieTitleParam, directorNameParam],
-    function (err: any, result: any) {
-      if (err) {
-        console.log("Query is not executed: " + err);
-        res.status(500).send("Error executing query");
-        return;
-      }
-      // console.log(result);
-      res.send(result);
+  if (movieTitle) {
+    query += " AND m.title LIKE ?";
+    queryParams.push(`%${movieTitle}%`);
+  }
+
+  if (directorName) {
+    query += " AND d.director_name LIKE ?";
+    queryParams.push(`%${directorName}%`);
+  }
+
+  if (fromYear !== "전체 선택" && toYear !== "전체 선택") {
+    query += " AND m.year BETWEEN ? AND ?";
+    queryParams.push(fromYear, toYear);
+  } else if (fromYear !== "전체 선택") {
+    query += " AND m.year >= ?";
+    queryParams.push(fromYear);
+  } else if (toYear !== "전체 선택") {
+    query += " AND m.year <= ?";
+    queryParams.push(toYear);
+  }
+
+  if (!isNull) query += ` ORDER BY m.movie_id`;
+
+  conn.query(query, queryParams, function (err: any, result: any) {
+    if (err) {
+      console.log("Query is not executed: " + err);
+      res.status(500).send("Error executing query");
+      return;
     }
-  );
+    res.send(result);
+  });
 });
 
 app.use(express.static(path.join(__dirname, "./client/build")));
