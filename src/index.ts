@@ -17,12 +17,12 @@ app.set("host", process.env.HOST || "0.0.0.0"); // 아이피 설정
 
 app.get("/movies", (req: Request, res: Response, next: NextFunction) => {
   const query = `    
-    SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+    SELECT m.id, m.title, m.eng_title, m.year, m.country, m.m_type, m.status, m.company, g.genre, d.name
     FROM movies m
-    LEFT JOIN movie_director md ON m.movie_id = md.movie_id
-    LEFT JOIN genres g ON m.movie_id = g.movie_id
-    LEFT JOIN directors d ON md.director_id = d.director_id
-    ORDER BY m.movie_id`;
+    LEFT JOIN movie_director md ON m.id = md.movie_id
+    LEFT JOIN genres g ON m.id = g.movie_id
+    LEFT JOIN directors d ON md.director_id = d.id
+    ORDER BY m.id`;
   conn.query(query, function (err: any, result: any) {
     if (err) {
       console.log("query is not excuted: " + err);
@@ -38,11 +38,11 @@ app.get("/search-movies", (req: Request, res: Response, next: NextFunction) => {
 
   let isNull = false;
   let query = `
-      SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+      SELECT m.id, m.title, m.eng_title, m.year, m.country, m.m_type, m.status, m.company, g.genre, d.name
       FROM movies m
-      LEFT JOIN movie_director md ON m.movie_id = md.movie_id
-      LEFT JOIN genres g ON m.movie_id = g.movie_id
-      LEFT JOIN directors d ON md.director_id = d.director_id
+      LEFT JOIN movie_director md ON m.id = md.movie_id
+      LEFT JOIN genres g ON m.id = g.movie_id
+      LEFT JOIN directors d ON md.director_id = d.id
       WHERE 1=1
     `;
   if (
@@ -52,12 +52,12 @@ app.get("/search-movies", (req: Request, res: Response, next: NextFunction) => {
     toYear === "전체 선택"
   ) {
     query = `    
-      SELECT m.movie_id, m.title, m.eng_title, m.year, m.country, m.type, m.status, m.company, g.genre, d.director_name
+      SELECT m.id, m.title, m.eng_title, m.year, m.country, m.m_type, m.status, m.company, g.genre, d.name
       FROM movies m
-      LEFT JOIN movie_director md ON m.movie_id = md.movie_id
-      LEFT JOIN genres g ON m.movie_id = g.movie_id
-      LEFT JOIN directors d ON md.director_id = d.director_id
-      ORDER BY m.movie_id`;
+      LEFT JOIN movie_director md ON m.id = md.movie_id
+      LEFT JOIN genres g ON m.id = g.movie_id
+      LEFT JOIN directors d ON md.director_id = d.id
+      ORDER BY m.id`;
     isNull = true;
   }
 
@@ -69,7 +69,7 @@ app.get("/search-movies", (req: Request, res: Response, next: NextFunction) => {
   }
 
   if (directorName) {
-    query += " AND d.director_name LIKE ?";
+    query += " AND d.name LIKE ?";
     queryParams.push(`%${directorName}%`);
   }
 
@@ -84,7 +84,7 @@ app.get("/search-movies", (req: Request, res: Response, next: NextFunction) => {
     queryParams.push(toYear);
   }
 
-  if (!isNull) query += ` ORDER BY m.movie_id`;
+  if (!isNull) query += ` ORDER BY m.id`;
 
   conn.query(query, queryParams, function (err: any, result: any) {
     if (err) {
